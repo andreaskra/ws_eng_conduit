@@ -9,7 +9,6 @@ import { User } from './user.entity';
 import { IUserRO } from './user.interface';
 import { UserRepository } from './user.repository';
 
-
 @Injectable()
 export class UserService {
   constructor(private readonly userRepository: UserRepository, private readonly em: EntityManager) {}

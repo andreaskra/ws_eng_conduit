@@ -20,40 +20,39 @@ export class ArticleController {
     return this.articleService.findAll(+user, query);
   }
 
-   @Get('/roster')
-   async findRoster(): Promise<IUserRoster[]> {
-      const userRosterArray: IUserRoster[] = [];
+  @Get('/roster')
+  async findRoster(): Promise<IUserRoster[]> {
+    const userRosterArray: IUserRoster[] = [];
 
-      const allUsers = await this.userService.findAll();
+    const allUsers = await this.userService.findAll();
 
-      // below is the code iterating all users:
-      for (let i = 0; i < allUsers.length; i++) {
-         const user = allUsers[i];
+    // below is the code iterating all users:
+    for (let i = 0; i < allUsers.length; i++) {
+      const user = allUsers[i];
 
-         // get all articles for this user
-         const likes_articles_first = await this.articleService.likesArticlesDate(user.id);
-         const likes = likes_articles_first[0];
-         const articles = likes_articles_first[1];
-         const date = likes_articles_first[2];
+      // get all articles for this user
+      const likes_articles_first = await this.articleService.likesArticlesDate(user.id);
+      const likes = likes_articles_first[0];
+      const articles = likes_articles_first[1];
+      const date = likes_articles_first[2];
 
-         const dummyUser: IUserRoster = {
-            id: user.id,
-            image: user.image, // Replace with actual image URLs or leave as undefined
-            username: user.username, //`user${i}`,
-            likes: likes, // Random likes count
-            articles: articles, // Random articles count
-            firstPublish: date, // Random date within a range
-         };
+      const dummyUser: IUserRoster = {
+        id: user.id,
+        image: user.image, // Replace with actual image URLs or leave as undefined
+        username: user.username, //`user${i}`,
+        likes: likes, // Random likes count
+        articles: articles, // Random articles count
+        firstPublish: date, // Random date within a range
+      };
 
-         userRosterArray.push(dummyUser);
-      }
+      userRosterArray.push(dummyUser);
+    }
 
-      // sort userRosterArray by likes in descending order
-      userRosterArray.sort((a, b) => b.likes - a.likes);
+    // sort userRosterArray by likes in descending order
+    userRosterArray.sort((a, b) => b.likes - a.likes);
 
-      return userRosterArray;
-   }
-
+    return userRosterArray;
+  }
 
   @ApiOperation({ summary: 'Get article feed' })
   @ApiResponse({ status: 200, description: 'Return article feed.' })

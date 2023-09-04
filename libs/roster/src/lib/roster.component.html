@@ -1,0 +1,39 @@
+<!-- Roster HTML -->
+<div class="roster-page">
+  <div class="banner">
+    <div class="container">
+      <h1 class="logo-font">Conduit Roster</h1>
+    </div>
+  </div>
+  <div class="container page">
+    <div class="row">
+      <div class="col-md-12">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Likes</th>
+              <th>Articles</th>
+              <th>First Publish</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let userResp of roster">
+              <td>
+                <a [routerLink]="['/profile', userResp.username]">
+                  <img [src]="userResp.image" />
+                </a>
+                <a class="author" [routerLink]="['/profile', userResp.username]">
+                  {{ userResp.username }}
+                </a>
+              </td>
+              <td>{{ userResp.likes }}</td>
+              <td>{{ userResp.articles }}</td>
+              <td>{{ userResp.firstPublish }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

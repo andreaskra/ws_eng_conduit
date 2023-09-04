@@ -36,8 +36,7 @@ export const appConfig: ApplicationConfig = {
       },
       {
         path: 'roster',
-        loadComponent: () =>
-          import('@realworld/roster').then((r) => r.RosterComponent),
+        loadComponent: () => import('@realworld/roster').then((r) => r.RosterComponent),
       },
       {
         path: 'settings',

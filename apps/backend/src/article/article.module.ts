@@ -19,7 +19,7 @@ export class ArticleModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthMiddleware)
-      .exclude({ path: 'articles/roster', method: RequestMethod.GET }) 
+      .exclude({ path: 'articles/roster', method: RequestMethod.GET })
       .forRoutes(
         { path: 'articles/feed', method: RequestMethod.GET },
         { path: 'articles', method: RequestMethod.POST },
