@@ -3,6 +3,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { AuthMiddleware } from '../user/auth.middleware';
 import { User } from '../user/user.entity';
 import { UserModule } from '../user/user.module';
+import { UserService } from '../user/user.service';
 import { ArticleController } from './article.controller';
 import { Article } from './article.entity';
 import { ArticleService } from './article.service';
@@ -10,13 +11,15 @@ import { Comment } from './comment.entity';
 
 @Module({
   controllers: [ArticleController],
+  exports: [ArticleService],
   imports: [MikroOrmModule.forFeature({ entities: [Article, Comment, User] }), UserModule],
-  providers: [ArticleService],
+  providers: [ArticleService, UserService],
 })
 export class ArticleModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthMiddleware)
+      .exclude({ path: 'articles/roster', method: RequestMethod.GET }) 
       .forRoutes(
         { path: 'articles/feed', method: RequestMethod.GET },
         { path: 'articles', method: RequestMethod.POST },

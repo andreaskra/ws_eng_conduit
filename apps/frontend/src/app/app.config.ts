@@ -35,6 +35,11 @@ export const appConfig: ApplicationConfig = {
         loadChildren: () => import('@realworld/articles/article').then((m) => m.ARTICLE_ROUTES),
       },
       {
+        path: 'roster',
+        loadComponent: () =>
+          import('@realworld/roster').then((r) => r.RosterComponent),
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('@realworld/settings/feature-settings').then((settings) => settings.SettingsComponent),

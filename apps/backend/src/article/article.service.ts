@@ -8,6 +8,7 @@ import { Article } from './article.entity';
 import { IArticleRO, IArticlesRO, ICommentsRO } from './article.interface';
 import { Comment } from './comment.entity';
 import { CreateArticleDto, CreateCommentDto } from './dto';
+import { Tag } from '../tag/tag.entity';
 
 @Injectable()
 export class ArticleService {
@@ -20,6 +21,33 @@ export class ArticleService {
     @InjectRepository(User)
     private readonly userRepository: EntityRepository<User>,
   ) {}
+
+  async likesArticlesDate(authorID: number): Promise<[number, number, string]> {
+   const qb = this.articleRepository.createQueryBuilder('a').select('a.*')
+   qb.andWhere({ author: authorID });
+
+   // Execute the query and get the result
+   const result = await qb.getResult()
+
+   // iterate all elements of result and sum up the favoritesCount
+   const likes = result.reduce((sum, article) => sum + article.favoritesCount, 0)
+   var publishedFirst = ""
+
+   // create a date object with today's date plus 1000 years
+   const today = new Date();
+   const future = new Date(today.getFullYear() + 1000, today.getMonth(), today.getDate());
+
+   // iterate all elements of result and get the earliest createdAt
+   const earliest = result.reduce((earliest, article) => {
+      return article.createdAt < earliest ? article.createdAt : earliest;
+   }, future);
+
+   if (earliest < future) {
+      publishedFirst = earliest.toISOString();
+   }
+
+   return [likes, result.length, publishedFirst];
+ }
 
   async findAll(userId: number, query: Record<string, string>): Promise<IArticlesRO> {
     const user = userId
@@ -154,7 +182,18 @@ export class ArticleService {
       { populate: ['followers', 'favorites', 'articles'] },
     );
     const article = new Article(user!, dto.title, dto.description, dto.body);
-    article.tagList.push(...dto.tagList);
+    // changed type of tagList to string in CreateArticleDto
+    const tags = dto.tagList.split(',').map(tag => tag.trim());
+    article.tagList.push(...tags);
+
+    // q: how do i store each tag in the database?
+      // a: use this.em.create() to create a Tag object
+      // q: how do I call this.em.create() on each element of tags array?
+         // a: use .map() to create an array of Tag objects
+            // q: can you write me that code?
+            // a: sure, here you go:
+    const tagObjects = tags.map(tag => this.em.create(Tag, { tag }));
+
     user?.articles.add(article);
     await this.em.flush();
 
