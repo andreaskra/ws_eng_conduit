@@ -27,10 +27,10 @@ import { RouterModule } from '@angular/router';
   providers: [RosterService],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+
 export class RosterComponent implements OnInit {
   articles: Article[] = []; // Define an array to store user data
   roster: IUserRoster[] = []; // Define an array to store user data
-  authors: Author[] = []; // Define an array to store user data
 
   constructor(private userService: RosterService, private cdr: ChangeDetectorRef) {}
 
@@ -54,50 +54,3 @@ export class RosterComponent implements OnInit {
   }
 }
 
-export interface Author {
-  username: string; // The user name
-  profileLink: string; // The profile link
-  totalArticlesAuthored: number; // The total number of articles authored
-  totalLikesReceived: number; // The total number of likes received on their articles
-  firstArticleDate: string | null; // The date of their first article (empty if none)
-}
-
-function getAuthorsFromArticles(articles: Article[]) {
-  // Create an empty map to store author information by their username
-  const authorMap = new Map();
-
-  // Iterate through the articles to aggregate author information
-  for (const article of articles) {
-    const authorUsername = article.author.username;
-
-    // If the author is not already in the map, initialize their information
-    if (!authorMap.has(authorUsername)) {
-      authorMap.set(authorUsername, {
-        username: article.author.username,
-        profileLink: article.author.image, // Replace with the actual profile link
-        totalArticlesAuthored: 0,
-        totalLikesReceived: 0,
-        firstArticleDate: null,
-      });
-    }
-
-    // Increment the totalArticlesAuthored count
-    authorMap.get(authorUsername).totalArticlesAuthored++;
-
-    // Add the favoritesCount to totalLikesReceived
-    authorMap.get(authorUsername).totalLikesReceived += article.favoritesCount;
-
-    // Update the firstArticleDate if it's null or earlier than the current article's date
-    if (
-      !authorMap.get(authorUsername).firstArticleDate ||
-      article.createdAt < authorMap.get(authorUsername).firstArticleDate
-    ) {
-      authorMap.get(authorUsername).firstArticleDate = article.createdAt;
-    }
-  }
-
-  // Convert the map values (author objects) into an array
-  const authors = Array.from(authorMap.values());
-
-  return authors;
-}

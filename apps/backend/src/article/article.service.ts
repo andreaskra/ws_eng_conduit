@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager, QueryOrder, wrap } from '@mikro-orm/core';
+import { EntityManager, QueryOrder, t, wrap } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/mysql';
+import { setTimeout, clearTimeout } from 'node:timers';
 
 import { User } from '../user/user.entity';
 import { Article } from './article.entity';
@@ -9,9 +10,13 @@ import { IArticleRO, IArticlesRO, ICommentsRO } from './article.interface';
 import { Comment } from './comment.entity';
 import { CreateArticleDto, CreateCommentDto } from './dto';
 import { Tag } from '../tag/tag.entity';
+import { IArticleLockRO } from '@realworld/articles/article-edit';
 
 @Injectable()
 export class ArticleService {
+
+  private unlockTimers: Map<string, NodeJS.Timeout> = new Map();
+
   constructor(
     private readonly em: EntityManager,
     @InjectRepository(Article)
@@ -23,8 +28,8 @@ export class ArticleService {
   ) {}
 
   async likesArticlesDate(authorID: number): Promise<[number, number, string]> {
-    const qb = this.articleRepository.createQueryBuilder('a').select('a.*');
-    qb.andWhere({ author: authorID });
+    const qb = this.articleRepository.createQueryBuilder('a').select('a.*').leftJoinAndSelect('a.authors', 'authors');
+    qb.andWhere({ authors: authorID });
 
     // Execute the query and get the result
     const result = await qb.getResult();
@@ -49,11 +54,57 @@ export class ArticleService {
     return [likes, result.length, publishedFirst];
   }
 
+  async lock(username: string, articleSlug: string, should_lock: string): Promise<IArticleLockRO> {
+      const unlockTimeout = 5 * 60 * 1000
+      const user = await this.userRepository.findOneOrFail({ username });
+      const article = await this.articleRepository.findOneOrFail({ slug: articleSlug }, { populate: ['authors'] });
+
+      var response = "failed";
+      if (user && article) {
+         if (should_lock === 'true') {
+            if (article.locked_by_user_id === null) {
+               article.locked_by_user_id = user.id;
+               response = "acquired";
+            }
+            else if (article.locked_by_user_id === user.id) {
+               response = "renewed";
+            }
+            if (response !== "failed") {
+               article.last_activity_time = new Date();
+               await this.em.flush();
+
+               // Schedule the unlock operation after 5 minutes
+               const unlockTimer = setTimeout(async () => {
+                  // Check if there's still no activity
+                  if (article.last_activity_time && Date.now() - article.last_activity_time.getTime() >= unlockTimeout) {
+                     article.locked_by_user_id = null;
+                     await this.em.flush();
+                     console.log('################# article unlocked');
+                  }
+               }, unlockTimeout);
+
+               // Store the timer in the map
+               this.unlockTimers.set(articleSlug, unlockTimer);
+            }
+         }
+         else {
+            if (article.locked_by_user_id === user.id) {
+               article.locked_by_user_id = null;
+               await this.em.flush();
+               response = "unlocked";
+            }
+         }
+      }
+
+      return { msg: response };
+  }
+
   async findAll(userId: number, query: Record<string, string>): Promise<IArticlesRO> {
     const user = userId
       ? await this.userRepository.findOne(userId, { populate: ['followers', 'favorites'] })
       : undefined;
-    const qb = this.articleRepository.createQueryBuilder('a').select('a.*').leftJoin('a.author', 'u');
+
+    const qb = this.articleRepository.createQueryBuilder('a').select('a.*').leftJoinAndSelect('a.authors', 'authors');
 
     if ('tag' in query) {
       qb.andWhere({ tagList: new RegExp(query.tag) });
@@ -66,7 +117,7 @@ export class ArticleService {
         return { articles: [], articlesCount: 0 };
       }
 
-      qb.andWhere({ author: author.id });
+      qb.andWhere({ authors: author.id });
     }
 
     if ('favorited' in query) {
@@ -77,7 +128,7 @@ export class ArticleService {
       }
 
       const ids = author.favorites.$.getIdentifiers();
-      qb.andWhere({ author: ids });
+      qb.andWhere({ authors: ids });
     }
 
     qb.orderBy({ createdAt: QueryOrder.DESC });
@@ -93,6 +144,7 @@ export class ArticleService {
     }
 
     const articles = await qb.getResult();
+   //  const articles = await this.articleRepository.findAll({ populate: ['authors'] });
 
     return { articles: articles.map((a) => a.toJSON(user!)), articlesCount };
   }
@@ -102,9 +154,9 @@ export class ArticleService {
       ? await this.userRepository.findOne(userId, { populate: ['followers', 'favorites'] })
       : undefined;
     const res = await this.articleRepository.findAndCount(
-      { author: { followers: userId } },
+      { authors: { followers: userId } },
       {
-        populate: ['author'],
+        populate: ['authors'],
         orderBy: { createdAt: QueryOrder.DESC },
         limit: +query.limit,
         offset: +query.offset,
@@ -119,12 +171,12 @@ export class ArticleService {
     const user = userId
       ? await this.userRepository.findOneOrFail(userId, { populate: ['followers', 'favorites'] })
       : undefined;
-    const article = await this.articleRepository.findOne(where, { populate: ['author'] });
+    const article = await this.articleRepository.findOne(where, { populate: ['authors'] });
     return { article: article && article.toJSON(user) } as IArticleRO;
   }
 
   async addComment(userId: number, slug: string, dto: CreateCommentDto) {
-    const article = await this.articleRepository.findOneOrFail({ slug }, { populate: ['author'] });
+    const article = await this.articleRepository.findOneOrFail({ slug }, { populate: ['authors'] });
     const author = await this.userRepository.findOneOrFail(userId);
     const comment = new Comment(author, article, dto.body);
     await this.em.persistAndFlush(comment);
@@ -133,7 +185,7 @@ export class ArticleService {
   }
 
   async deleteComment(userId: number, slug: string, id: number): Promise<IArticleRO> {
-    const article = await this.articleRepository.findOneOrFail({ slug }, { populate: ['author'] });
+    const article = await this.articleRepository.findOneOrFail({ slug }, { populate: ['authors'] });
     const user = await this.userRepository.findOneOrFail(userId);
     const comment = this.commentRepository.getReference(id);
 
@@ -146,7 +198,7 @@ export class ArticleService {
   }
 
   async favorite(id: number, slug: string): Promise<IArticleRO> {
-    const article = await this.articleRepository.findOneOrFail({ slug }, { populate: ['author'] });
+    const article = await this.articleRepository.findOneOrFail({ slug }, { populate: ['authors'] });
     const user = await this.userRepository.findOneOrFail(id, { populate: ['favorites', 'followers'] });
 
     if (!user.favorites.contains(article)) {
@@ -159,7 +211,7 @@ export class ArticleService {
   }
 
   async unFavorite(id: number, slug: string): Promise<IArticleRO> {
-    const article = await this.articleRepository.findOneOrFail({ slug }, { populate: ['author'] });
+    const article = await this.articleRepository.findOneOrFail({ slug }, { populate: ['authors'] });
     const user = await this.userRepository.findOneOrFail(id, { populate: ['followers', 'favorites'] });
 
     if (user.favorites.contains(article)) {
@@ -205,8 +257,32 @@ export class ArticleService {
       { id: userId },
       { populate: ['followers', 'favorites', 'articles'] },
     );
-    const article = await this.articleRepository.findOne({ slug }, { populate: ['author'] });
-    wrap(article).assign(articleData);
+    const article = await this.articleRepository.findOne({ slug }, { populate: ['authors'] });
+
+    // if articleData has property authors, assign it to a constant
+      const { authorsCS, authors, createdAt, ...data } = articleData;
+      // if authors is defined
+      if (authorsCS && article && typeof authorsCS === 'string') {
+
+         const author_mails = authorsCS.split(',').map( (author_email) => {
+            const mail = author_email.trim();
+            return mail;
+         }
+         );
+
+         for (const mail of author_mails) {
+            const u = await this.userRepository.findOne({ "email": mail });
+
+            if (u) {
+               article.authors.add(u);
+
+               console.log('################# data:', data);
+               console.log('################# added:', u.email, u.username, "to authors");
+            }
+         }
+      }
+
+    wrap(article).assign(data);
     await this.em.flush();
 
     return { article: article!.toJSON(user!) };

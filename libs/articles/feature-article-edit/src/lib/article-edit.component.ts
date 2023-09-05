@@ -5,7 +5,13 @@ import { Validators } from '@angular/forms';
 import { UntilDestroy, untilDestroyed } from '@ngneat/until-destroy';
 import { Store } from '@ngrx/store';
 import { articleActions, articleEditActions, articleQuery } from '@realworld/articles/data-access';
+import { ApiService } from '@realworld/core/http-client';
+import { selectAuthState, selectLoggedIn, selectUser } from '@realworld/auth/data-access';
+import { filter } from 'rxjs/operators';
 
+export interface IArticleLockRO {
+   msg: string;
+}
 const structure: Field[] = [
   {
     type: 'INPUT',
@@ -31,6 +37,12 @@ const structure: Field[] = [
     placeholder: 'Enter Tags',
     validator: [],
   },
+  {
+    type: 'INPUT',
+    name: 'authorsCS',
+    placeholder: 'Add Authors by email',
+    validator: [],
+  },
 ];
 
 @UntilDestroy()
@@ -42,30 +54,88 @@ const structure: Field[] = [
   imports: [DynamicFormComponent, ListErrorsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+
 export class ArticleEditComponent implements OnInit, OnDestroy {
   structure$ = this.store.select(ngrxFormsQuery.selectStructure);
   data$ = this.store.select(ngrxFormsQuery.selectData);
 
-  constructor(private readonly store: Store) {}
+  didLock=false;
+  lockingUser="";
+  slug="";
+
+  constructor(private readonly store: Store, private apiService: ApiService) {}
 
   ngOnInit() {
-    this.store.dispatch(formsActions.setStructure({ structure }));
+    // get the article id from data
+    this.store.select(articleQuery.selectData).pipe(untilDestroyed(this)).subscribe((article) => {
+      console.log("article.slug: ", article.slug);
+      this.slug = article.slug;
+      if (article.slug !== "") {
+         this.store.select(selectAuthState)
+            .pipe(filter((auth) => auth.loggedIn), untilDestroyed(this)
+            ).subscribe((auth) => {
+               console.log("username: ", auth.user.username);
+               this.lockingUser = auth.user.username;
+         
+               this.apiService.get<IArticleLockRO>(`/articles/lock?articleSlug=${article.slug}&username=${auth.user.username}&lock=true`).pipe(untilDestroyed(this)).subscribe((response: IArticleLockRO) => {
+   
+                  console.log("response: ", response);
+                  if (response.msg !== "failed") {
+                     // if (response.msg === "acquired") {
+                     // }
+                     this.didLock = true;
+                     this.store.dispatch(formsActions.setStructure({ structure }));
+                  
+                     this.store
+                        .select(articleQuery.selectData)
+                        .pipe(untilDestroyed(this))
+                        .subscribe((article) => this.store.dispatch(formsActions.setData({ data: article })));
+                  }
 
-    this.store
-      .select(articleQuery.selectData)
-      .pipe(untilDestroyed(this))
-      .subscribe((article) => this.store.dispatch(formsActions.setData({ data: article })));
+               });
+         });
+      }
+    });
+
   }
 
   updateForm(changes: any) {
-    this.store.dispatch(formsActions.updateData({ data: changes }));
+    if (this.didLock) {
+      this.renewLock();
+      this.store.dispatch(formsActions.updateData({ data: changes }));
+    }
   }
 
   submit() {
-    this.store.dispatch(articleEditActions.publishArticle());
+   if (this.didLock) {
+      this.store.dispatch(articleEditActions.publishArticle());
+   }
   }
 
   ngOnDestroy() {
     this.store.dispatch(formsActions.initializeForm());
+
+    if (this.didLock) {
+      console.log("article should unlock");
+      this.apiService.get<IArticleLockRO>(`/articles/lock?articleSlug=${this.slug}&username=${this.lockingUser}&lock=false`).pipe().subscribe((response: IArticleLockRO) => {
+      
+        console.log("response: ", response);
+        if (response.msg === "unlocked") {
+           console.log("article unlocked");
+        }
+     });
+    }
+  }
+
+  renewLock() {
+   if (this.didLock) {
+      console.log("activity renews lock");
+      this.apiService.get<IArticleLockRO>(`/articles/lock?articleSlug=${this.slug}&username=${this.lockingUser}&lock=true`).pipe().subscribe((response: IArticleLockRO) => {
+      
+        console.log("response: ", response);
+        // response is only true if lock was newly acquired
+        // response is false for merely renewing lock
+     });
+    }
   }
 }

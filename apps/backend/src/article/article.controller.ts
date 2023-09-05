@@ -6,6 +6,7 @@ import { ArticleService } from './article.service';
 import { CreateArticleDto, CreateCommentDto } from './dto';
 import { IUserRoster } from 'libs/roster/src/lib/roster.service';
 import { UserService } from '../user/user.service';
+import { IArticleLockRO } from '@realworld/articles/article-edit';
 
 @ApiBearerAuth()
 @ApiTags('articles')
@@ -19,6 +20,16 @@ export class ArticleController {
   async findAll(@UserDec('id') user: number, @Query() query: Record<string, string>): Promise<IArticlesRO> {
     return this.articleService.findAll(+user, query);
   }
+
+  @Get('/lock')
+  async lock(
+   @Query('username') username: string,
+   @Query('articleSlug') articleSlug: string,
+   @Query('lock') lock: string,
+  ): Promise<IArticleLockRO> {
+      return this.articleService.lock(username, articleSlug, lock);
+  }
+
 
   @Get('/roster')
   async findRoster(): Promise<IUserRoster[]> {
