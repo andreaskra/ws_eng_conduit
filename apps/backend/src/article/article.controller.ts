@@ -23,13 +23,12 @@ export class ArticleController {
 
   @Get('/lock')
   async lock(
-   @Query('username') username: string,
-   @Query('articleSlug') articleSlug: string,
-   @Query('lock') lock: string,
+    @Query('username') username: string,
+    @Query('articleSlug') articleSlug: string,
+    @Query('lock') lock: string,
   ): Promise<IArticleLockRO> {
-      return this.articleService.lock(username, articleSlug, lock);
+    return this.articleService.lock(username, articleSlug, lock);
   }
-
 
   @Get('/roster')
   async findRoster(): Promise<IUserRoster[]> {

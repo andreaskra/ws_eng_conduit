@@ -22,13 +22,15 @@ export const articleInitialState: ArticleState = {
     updatedAt: '',
     favorited: false,
     favoritesCount: 0,
-    authors: [{
-      username: '',
-      bio: '',
-      image: '',
-      following: false,
-      loading: false,
-    }],
+    authors: [
+      {
+        username: '',
+        bio: '',
+        image: '',
+        following: false,
+        loading: false,
+      },
+    ],
   },
   comments: [],
   loaded: false,
@@ -77,10 +79,10 @@ export const articleFeature = createFeature({
       var data: Article = { ...state.data };
       // replace the author with the updated one
       data.authors = data.authors.map((author) => {
-         if (author.username === action.profile.username) {
-            return action.profile;
-         }
-         return author;
+        if (author.username === action.profile.username) {
+          return action.profile;
+        }
+        return author;
       });
       return { ...state, data };
     }),

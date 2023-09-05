@@ -14,7 +14,6 @@ import { IArticleLockRO } from '@realworld/articles/article-edit';
 
 @Injectable()
 export class ArticleService {
-
   private unlockTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(
@@ -55,48 +54,52 @@ export class ArticleService {
   }
 
   async lock(username: string, articleSlug: string, should_lock: string): Promise<IArticleLockRO> {
-      const unlockTimeout = 5 * 60 * 1000
-      const user = await this.userRepository.findOneOrFail({ username });
-      const article = await this.articleRepository.findOneOrFail({ slug: articleSlug }, { populate: ['authors'] });
+    const unlockTimeout = 5 * 60 * 1000;
+    const user = await this.userRepository.findOne({ username });
+    const article = await this.articleRepository.findOne({ slug: articleSlug }, { populate: ['authors'] });
 
-      var response = "failed";
-      if (user && article) {
-         if (should_lock === 'true') {
-            if (article.locked_by_user_id === null) {
-               article.locked_by_user_id = user.id;
-               response = "acquired";
-            }
-            else if (article.locked_by_user_id === user.id) {
-               response = "renewed";
-            }
-            if (response !== "failed") {
-               article.last_activity_time = new Date();
-               await this.em.flush();
+    var response = 'failed';
+    if (user && article) {
+      if (should_lock === 'true') {
+        if (article.locked_by_user_id === null) {
+          article.locked_by_user_id = user.id;
+          response = 'acquired';
+        } else if (article.locked_by_user_id === user.id) {
+          response = 'renewed';
+        }
+        if (response !== 'failed') {
+          article.last_activity_time = new Date();
+          await this.em.flush();
 
-               // Schedule the unlock operation after 5 minutes
-               const unlockTimer = setTimeout(async () => {
-                  // Check if there's still no activity
-                  if (article.last_activity_time && Date.now() - article.last_activity_time.getTime() >= unlockTimeout) {
-                     article.locked_by_user_id = null;
-                     await this.em.flush();
-                     console.log('################# article unlocked');
-                  }
-               }, unlockTimeout);
+          // Schedule the unlock operation after 5 minutes
+          const unlockTimer = setTimeout(async () => {
+            // Check if there's still no activity
+            if (article.last_activity_time && Date.now() - article.last_activity_time.getTime() >= unlockTimeout) {
+              article.locked_by_user_id = null;
+              await this.em.flush();
+              console.log('################# article unlocked');
+            }
+          }, unlockTimeout);
 
-               // Store the timer in the map
-               this.unlockTimers.set(articleSlug, unlockTimer);
-            }
-         }
-         else {
-            if (article.locked_by_user_id === user.id) {
-               article.locked_by_user_id = null;
-               await this.em.flush();
-               response = "unlocked";
-            }
-         }
+          // Store the timer in the map
+          this.unlockTimers.set(articleSlug, unlockTimer);
+        }
+        else {
+          response = 'locked';
+        }
+      } else {
+        if (article.locked_by_user_id === user.id) {
+          article.locked_by_user_id = null;
+          await this.em.flush();
+          response = 'unlocked';
+        }
+        else {
+          response = 'locked';
+        }
       }
+    }
 
-      return { msg: response };
+    return { msg: response };
   }
 
   async findAll(userId: number, query: Record<string, string>): Promise<IArticlesRO> {
@@ -144,7 +147,7 @@ export class ArticleService {
     }
 
     const articles = await qb.getResult();
-   //  const articles = await this.articleRepository.findAll({ populate: ['authors'] });
+    //  const articles = await this.articleRepository.findAll({ populate: ['authors'] });
 
     return { articles: articles.map((a) => a.toJSON(user!)), articlesCount };
   }
@@ -260,27 +263,25 @@ export class ArticleService {
     const article = await this.articleRepository.findOne({ slug }, { populate: ['authors'] });
 
     // if articleData has property authors, assign it to a constant
-      const { authorsCS, authors, createdAt, ...data } = articleData;
-      // if authors is defined
-      if (authorsCS && article && typeof authorsCS === 'string') {
+    const { authorsCS, authors, createdAt, locked_by_user_id, last_activity_time, ...data } = articleData;
+    // if authors is defined
+    if (authorsCS && article && typeof authorsCS === 'string') {
+      const author_mails = authorsCS.split(',').map((author_email) => {
+        const mail = author_email.trim();
+        return mail;
+      });
 
-         const author_mails = authorsCS.split(',').map( (author_email) => {
-            const mail = author_email.trim();
-            return mail;
-         }
-         );
+      for (const mail of author_mails) {
+        const u = await this.userRepository.findOne({ email: mail });
 
-         for (const mail of author_mails) {
-            const u = await this.userRepository.findOne({ "email": mail });
+        if (u) {
+          article.authors.add(u);
 
-            if (u) {
-               article.authors.add(u);
-
-               console.log('################# data:', data);
-               console.log('################# added:', u.email, u.username, "to authors");
-            }
-         }
+          console.log('################# data:', data);
+          console.log('################# added:', u.email, u.username, 'to authors');
+        }
       }
+    }
 
     wrap(article).assign(data);
     await this.em.flush();

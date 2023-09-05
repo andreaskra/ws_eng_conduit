@@ -27,7 +27,6 @@ import { RouterModule } from '@angular/router';
   providers: [RosterService],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-
 export class RosterComponent implements OnInit {
   articles: Article[] = []; // Define an array to store user data
   roster: IUserRoster[] = []; // Define an array to store user data
@@ -53,4 +52,3 @@ export class RosterComponent implements OnInit {
     this.cdr.detectChanges();
   }
 }
-

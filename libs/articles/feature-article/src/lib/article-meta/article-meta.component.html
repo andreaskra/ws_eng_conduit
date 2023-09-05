@@ -1,33 +1,32 @@
 <div class="article-meta">
-
-   <table class="table">
-      <tbody>
-        <tr *ngFor="let author of article.authors">
-          <td>
-            <a [routerLink]="['/profile', author.username]">
-              <img [src]="author.image" />
-            </a>
-            <a class="author" [routerLink]="['/profile', author.username]">
+  <table class="table">
+    <tbody>
+      <tr *ngFor="let author of article.authors">
+        <td>
+          <a [routerLink]="['/profile', author.username]">
+            <img [src]="author.image" />
+          </a>
+          <a class="author" [routerLink]="['/profile', author.username]">
+            {{ author.username }}
+          </a>
+          <span [hidden]="canModify">
+            <button
+              class="btn btn-sm action-btn"
+              [ngClass]="{
+                'btn-outline-secondary': !author.following,
+                'btn-secondary': author.following
+              }"
+              (click)="toggleFollow(author.username)"
+            >
+              <i class="ion-plus-round"></i>
+              &nbsp; {{ author.following ? 'Unfollow' : 'Follow' }}
               {{ author.username }}
-            </a>
-            <span [hidden]="canModify">
-               <button
-               class="btn btn-sm action-btn"
-               [ngClass]="{
-                  'btn-outline-secondary': !author.following,
-                  'btn-secondary': author.following
-               }"
-               (click)="toggleFollow(author.username)"
-               >
-               <i class="ion-plus-round"></i>
-               &nbsp; {{ author.following ? 'Unfollow' : 'Follow' }}
-               {{ author.username }}
-               </button>
-            </span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            </button>
+          </span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 
   <div class="info">
     <span class="date">{{ article.createdAt | date : 'longDate' }}</span>
@@ -44,17 +43,17 @@
   </span>
 
   <span [hidden]="canModify">
-   <button
-     class="btn btn-sm btn-outline-primary"
-     [ngClass]="{
-       'btn-outline-primary': !article.favorited,
-       'btn-primary': article.favorited
-     }"
-     (click)="toggleFavorite()"
-   >
-     <i class="ion-heart"></i>
-     &nbsp; {{ article.favorited ? 'Unfavorite' : 'Favorite' }} Post
-     <span class="counter">({{ article.favoritesCount }})</span>
-   </button>
- </span>
+    <button
+      class="btn btn-sm btn-outline-primary"
+      [ngClass]="{
+        'btn-outline-primary': !article.favorited,
+        'btn-primary': article.favorited
+      }"
+      (click)="toggleFavorite()"
+    >
+      <i class="ion-heart"></i>
+      &nbsp; {{ article.favorited ? 'Unfavorite' : 'Favorite' }} Post
+      <span class="counter">({{ article.favoritesCount }})</span>
+    </button>
+  </span>
 </div>

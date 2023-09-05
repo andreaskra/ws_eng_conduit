@@ -28,7 +28,7 @@ export class DatabaseSeeder extends Seeder {
         updatedAt: new Date(),
       }),
       em.create(Article, {
-         authors: [authors.zolly],
+        authors: [authors.zolly],
         slug: 'how-to-do-something-else',
         title: 'How to do something else',
         tagList: [tags.coding.tag, tags.angular.tag],

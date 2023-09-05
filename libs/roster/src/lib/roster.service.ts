@@ -17,15 +17,6 @@ export interface IUserRoster {
 export class RosterService {
   constructor(private apiService: ApiService) {}
 
-  getArticles(): Observable<Article[]> {
-    // q: how do I querey the api to give me a list of all users?
-    // a: I don't know, but I'm going to try to figure it out.
-    return this.articles().pipe(map((response) => response.articles));
-  }
-  articles(): Observable<{ articles: Article[]; articlesCount: number }> {
-    return this.apiService.get('/articles');
-  }
-
   getRoster(): Observable<IUserRoster[]> {
     // q: how do I querey the api to give me a list of all users?
     // a: I don't know, but I'm going to try to figure it out.

@@ -42,13 +42,13 @@ export class Article {
   tagList: string[] = [];
 
   @ManyToMany({
-   entity: () => User,
-   inversedBy: (u) => u.articles,
-   owner: true,
-   pivotTable: 'article_authors',
-   joinColumn: 'article_id',
-   inverseJoinColumn: 'user_id',
-   hidden: true,
+    entity: () => User,
+    inversedBy: (u) => u.articles,
+    owner: true,
+    pivotTable: 'article_authors',
+    joinColumn: 'article_id',
+    inverseJoinColumn: 'user_id',
+    hidden: true,
   })
   authors = new Collection<User>(this);
 

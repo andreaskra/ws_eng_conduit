@@ -29,14 +29,14 @@ export class ArticleMetaComponent {
   }
 
   toggleFollow(autherName: string) {
-   const author = this.article.authors.filter((a) => a.username === autherName);
-   if (author.length > 0) {
+    const author = this.article.authors.filter((a) => a.username === autherName);
+    if (author.length > 0) {
       if (author[0].following) {
-         this.unfollow.emit(autherName);
+        this.unfollow.emit(autherName);
       } else {
-         this.follow.emit(autherName);
+        this.follow.emit(autherName);
       }
-   }
+    }
   }
 
   deleteArticle() {
